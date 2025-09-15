@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 import aiohttp
 import asyncio
 import logging
+import json
 # Import components
 from .advanced_llm_orchestrator import AdvancedLLMOrchestrator
 from .question_quality_engine import QuestionQualityEngine
@@ -53,6 +54,18 @@ class CandidateResponse(BaseModel):
     question_id: str
     response: str
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, float):
+            # Handle NaN and Infinity values
+            if np.isnan(obj) or np.isinf(obj):
+                return None
+            return obj
+        return super().default(obj)
+
+# Override the default JSON encoder in your FastAPI app
+app = FastAPI(title="Enterprise JD-Centric Interview System", version="1.0.0")
+app.json_encoder = CustomJSONEncoder
 
 class InterviewFeedback(BaseModel):
     session_id: str

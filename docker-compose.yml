@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Backend API
+  interview-api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - OLLAMA_HOST=ollama:11434
+      - DATABASE_URL=postgresql://postgres:password@db:5432/interviews
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - ollama
+      - redis
+      - db
+    volumes:
+      - ./backend/app:/app/app:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 180s
+      retries: 3
+
+  # Frontend
+  interview-frontend:
+    build: ./frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      - interview-api
+    environment:
+      - BACKEND_URL=http://interview-api:8000
+    restart: unless-stopped
+
+  # Ollama for LLM
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/Users/mohdzohakhan/.ollama:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+    restart: unless-stopped
+
+  # PostgreSQL database
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=interviews
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  postgres_data:
+  redis_data:
